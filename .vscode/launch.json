@@ -5,10 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "MDPI Scrapper",
+            "name": "MDPI Scrapper V5-V12",
             "type": "python",
             "request": "launch",
             "program": "scraper-mdpi-ijgi-v5-v12.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "MDPI Scrapper V1-V4",
+            "type": "python",
+            "request": "launch",
+            "program": "scraper-mdpi-ijgi-v1-v4.py",
             "console": "integratedTerminal",
             "justMyCode": true
         }
