@@ -19,6 +19,14 @@
             "program": "scraper-mdpi-ijgi-v1-v4.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "SCI hub",
+            "type": "python",
+            "request": "launch",
+            "program": "sci-hub-scrapper.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }
