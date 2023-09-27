@@ -3,12 +3,12 @@ import re
 import requests
 from scrapy.http import TextResponse
 
-g_outputPath = "F:\\Sci-hub"
+g_outputPath = "D:\\Sci-hub"
 g_downloadFailed = []
 g_overwrite = True
 
 def main():
-    global g_outputPath;
+    global g_outputPath
 
     doi_list_file = open('doi-list.txt', 'r')
     lines = doi_list_file.readlines()
@@ -91,20 +91,19 @@ def main():
             cur_downloading = cur_downloading + 1
             continue
 
+        # create file name
+        file_name = "{}.pdf".format(doi.replace("/", "___"))
 
-
-        write_file(respDownload)
+        write_file(respDownload, file_name)
 
         cur_downloading = cur_downloading + 1
 
-def write_file(respDownload):
+def write_file(respDownload, file_name):
     global g_outputPath, g_overwrite
-
-    fileName = respDownload.url.split("?")[0].split("/")[-1]
 
     path = os.path.join(g_outputPath, "");
 
-    fileName = os.path.join(path, fileName);
+    fileName = os.path.join(path, file_name);
 
     if os.path.exists(fileName):
         if g_overwrite:
