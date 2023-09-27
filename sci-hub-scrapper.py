@@ -25,6 +25,12 @@ def main():
     cur_downloading = 0;
 
     for doi in doi_list:
+        study_info = get_study_info(doi)
+        if not study_info:
+            print("failed to get study info for following DOI : {}".format(doi))
+            cur_downloading = cur_downloading + 1
+            continue
+
         url = sci_hub_url + doi
 
         # print("requesting {}".format(url))
@@ -91,19 +97,73 @@ def main():
             cur_downloading = cur_downloading + 1
             continue
 
-        # create file name
-        file_name = "{}.pdf".format(doi.replace("/", "___"))
-
-        write_file(respDownload, file_name)
+        write_file(respDownload, study_info)
 
         cur_downloading = cur_downloading + 1
 
-def write_file(respDownload, file_name):
+def get_study_info(doi):
+    global g_outputPath
+
+    url = "https://www.doi.org/{}".format(doi)
+
+    payload = {}
+    headers = {
+        'Accept': 'application/x-bibtex; charset=utf-8'
+    }
+
+    response = requests.request("GET", url, headers=headers, data=payload)
+    if response.status_code == 200:
+        temp_str_list = response.text.split("\n")
+        year = ""
+        month = ""
+        title = ""
+        journal = ""
+        for temp_str in temp_str_list:
+            if "year =" in temp_str:
+                year = temp_str.split("year =")[-1].strip()
+                year = year[: len(year) - 1]
+            elif "month =" in temp_str:
+                month = temp_str.split("month =")[-1].split("{")[-1].split("}")[0].strip()
+            elif "title =" in temp_str:
+                title = temp_str.split("title =")[-1].split("{")[-1].split("}")[0].strip()
+            elif "journal =" in temp_str:
+                journal = temp_str.split("journal =")[-1].split("{")[-1].split("}")[0].strip()
+        
+        if year and title and journal:
+            # create directory
+            journal_dir = "{}/{}".format(g_outputPath, journal)
+            if not os.path.exists(journal_dir):
+                os.mkdir(journal_dir)
+
+            year_dir = "{}/{}".format(journal_dir, year)
+            if not os.path.exists(year_dir):
+                os.mkdir(year_dir)
+
+            if month:
+                month_dir = "{}/{}".format(year_dir, month)
+                if not os.path.exists(month_dir):
+                    os.mkdir(month_dir)
+
+            return {
+                "year": year,
+                "month": month,
+                "title" : title,
+                "journal": journal
+            }
+    return None
+
+def write_file(respDownload, study_info):
     global g_outputPath, g_overwrite
 
     path = os.path.join(g_outputPath, "");
 
-    fileName = os.path.join(path, file_name);
+    out_path = "{}/{}/{}".format(path, study_info["journal"], study_info["year"])
+    if study_info["month"]:
+        out_path = "{}/{}".format(out_path, study_info["month"])
+    
+    file_name = "{}.pdf".format(study_info["title"])
+
+    fileName = os.path.join(out_path, file_name);
 
     if os.path.exists(fileName):
         if g_overwrite:
