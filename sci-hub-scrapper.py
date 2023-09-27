@@ -161,7 +161,7 @@ def write_file(respDownload, study_info):
     if study_info["month"]:
         out_path = "{}/{}".format(out_path, study_info["month"])
     
-    file_name = "{}.pdf".format(study_info["title"])
+    file_name = "{}.pdf".format(study_info["title"]).replace("?", "")
 
     fileName = os.path.join(out_path, file_name);
 
