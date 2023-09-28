@@ -1,11 +1,24 @@
 import os
 import re
 import requests
+import pathvalidate
+import time
 from scrapy.http import TextResponse
 
 g_outputPath = "D:\\Sci-hub"
+if not os.path.exists(g_outputPath):
+    g_outputPath = "F:\\Sci-hub"
 g_downloadFailed = []
-g_overwrite = True
+g_empty_doi = []
+g_overwrite = False
+
+def add_faild_doi(doi_value):
+    if doi_value not in g_downloadFailed:
+        g_downloadFailed.append(doi_value)
+
+def remove_faild_doi(doi_value):
+    if doi_value in g_downloadFailed:
+        g_downloadFailed.remove(doi_value)
 
 def main():
     global g_outputPath
@@ -22,12 +35,26 @@ def main():
 
     sci_hub_url = "https://sci-hub.ru/"
 
-    cur_downloading = 0;
+    cur_downloading = 0
+
+    path = os.path.join(g_outputPath, "")
 
     for doi in doi_list:
         study_info = get_study_info(doi)
         if not study_info:
-            print("failed to get study info for following DOI : {}".format(doi))
+            print("failed to get study info for following DOI : {} - {}".format(str(cur_downloading), doi))
+            cur_downloading = cur_downloading + 1
+            continue
+
+        out_path = "{}/{}/{}".format(path, study_info["journal"], study_info["year"])
+        if study_info["month"]:
+            out_path = "{}/{}".format(out_path, study_info["month"])
+        
+        file_name = "{}.pdf".format(study_info["title"])
+
+        file_path = pathvalidate.sanitize_filepath(os.path.join(out_path, file_name))
+        if os.path.exists(file_path):
+            print("Already downloaded for following DOI : {} - {}".format(str(cur_downloading), doi))
             cur_downloading = cur_downloading + 1
             continue
 
@@ -70,36 +97,46 @@ def main():
         else: 
             pdf_url =  "https://" + pdf_url
 
-        print("downloading {}/{}".format(cur_downloading, len(doi_list)))
+        print("downloading {} - {}".format(cur_downloading, len(doi_list)))
 
-        try:
-            respDownload = requests.get(pdf_url)
+        retry_count = 0
+        while retry_count < 5:
+            retry_count += 1
+            try:
+                respDownload = requests.get(pdf_url)
+            except Exception as e:   
+                # tuple
+                add_faild_doi(doi) 
 
-        except Exception as e:   
-            # tuple
-            g_downloadFailed.append((pdf_url)) 
+                print("downloading failed {} - {} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
 
-            print("downloading failed {}/{} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
+                time.sleep(5)
+                continue
+
+            print("size: {} url: {}".format(len(respDownload.content), pdf_url))
+
+            if len(respDownload.content) == 0:
+                add_faild_doi(doi) 
+                print("downloading failed {} - {} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
+                time.sleep(5)
+                continue
+            elif len(respDownload.content) == 146:
+                g_empty_doi.append(doi) 
+                print("There is no file doi: {}".format(doi))
+                cur_downloading = cur_downloading + 1
+                break
+            elif len(respDownload.content) < 1024:
+                add_faild_doi(doi) 
+                print("downloading failed {} - {} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
+                time.sleep(5)
+                continue
+
+            write_file(respDownload, file_path)
+
+            remove_faild_doi(doi) 
+
             cur_downloading = cur_downloading + 1
-            continue
-
-        print("size: {} url: {}".format(len(respDownload.content), pdf_url))
-
-        if len(respDownload.content) == 0:
-            g_downloadFailed.append((pdf_url)) 
-            print("downloading failed {}/{} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
-
-        if len(respDownload.content) < 1024:
-            g_downloadFailed.append((pdf_url)) 
-            print("downloading failed {}/{} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
-
-        write_file(respDownload, study_info)
-
-        cur_downloading = cur_downloading + 1
+            break
 
 def get_study_info(doi):
     global g_outputPath
@@ -152,26 +189,13 @@ def get_study_info(doi):
             }
     return None
 
-def write_file(respDownload, study_info):
-    global g_outputPath, g_overwrite
+def write_file(respDownload, file_path):
+    if g_overwrite:
+        os.remove(file_path)
+    else:
+        return
 
-    path = os.path.join(g_outputPath, "");
-
-    out_path = "{}/{}/{}".format(path, study_info["journal"], study_info["year"])
-    if study_info["month"]:
-        out_path = "{}/{}".format(out_path, study_info["month"])
-    
-    file_name = "{}.pdf".format(study_info["title"]).replace("?", "")
-
-    fileName = os.path.join(out_path, file_name);
-
-    if os.path.exists(fileName):
-        if g_overwrite:
-            os.remove(fileName)
-        else:
-            return
-
-    f = open(fileName, "wb")
+    f = open(file_path, "wb")
     f.write(respDownload.content)
     f.close()
     
@@ -225,6 +249,16 @@ def retry_failed_to_download():
 
 main()
 
-retry_failed_to_download()
+if len(g_downloadFailed) > 0:
+    faild_doi_list_file = open('failed-doi-list.txt', 'w')
+    faild_doi_list_file.write("\n".join(g_downloadFailed))
+    faild_doi_list_file.close()
+
+if len(g_empty_doi) > 0:
+    empty_doi_list_file = open('empty-doi-list.txt', 'w')
+    empty_doi_list_file.write("\n".join(g_empty_doi))
+    empty_doi_list_file.close()
+
+# retry_failed_to_download()
 
 print("all done")
