@@ -198,8 +198,6 @@ def get_study_info(doi):
 def write_file(respDownload, file_path):
     if g_overwrite:
         os.remove(file_path)
-    else:
-        return
 
     f = open(file_path, "wb")
     f.write(respDownload.content)
