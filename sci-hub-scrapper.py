@@ -96,6 +96,12 @@ def main():
              pdf_url =  sci_hub_url + pdf_url
         else: 
             pdf_url =  "https://" + pdf_url
+        
+        if pdf_url.split("https://")[-1][:9] == "downloads":
+            pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
+        elif pdf_url.split("https://")[-1][:8] == "uptodate":
+            pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
+
 
         print("downloading {} - {}".format(cur_downloading, len(doi_list)))
 
