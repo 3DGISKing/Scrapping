@@ -1,5 +1,7 @@
+import json
 import os
 import re
+import sqlite3
 import requests
 import pathvalidate
 import time
@@ -7,10 +9,14 @@ from scrapy.http import TextResponse
 
 g_outputPath = "D:\\Sci-hub"
 if not os.path.exists(g_outputPath):
-    g_outputPath = "F:\\Sci-hub"
+    g_outputPath = "E:\\Sci-hub"
 g_downloadFailed = []
 g_empty_doi = []
+g_study_info_list = []
 g_overwrite = False
+g_writing_failed_path = "writing_failed"
+if not os.path.exists(g_writing_failed_path):
+    os.mkdir(g_writing_failed_path)
 
 def add_faild_doi(doi_value):
     if doi_value not in g_downloadFailed:
@@ -25,6 +31,9 @@ def main():
 
     doi_list_file = open('doi-list.txt', 'r')
     lines = doi_list_file.readlines()
+    sqlite_conn = sqlite3.connect("index.db")
+    cursor = sqlite_conn.cursor()
+    cursor.execute("CREATE TABLE IF NOT EXISTS journals (journal TEXT, title TEXT, year TEXT, month TEXT, filepath TEXT, doi TEXT NOT NULL UNIQUE)")
 
     doi_list = []
  
@@ -45,16 +54,16 @@ def main():
             print("failed to get study info for following DOI : {} - {}".format(str(cur_downloading), doi))
             cur_downloading = cur_downloading + 1
             continue
-
         out_path = "{}/{}/{}".format(path, study_info["journal"], study_info["year"])
         if study_info["month"]:
             out_path = "{}/{}".format(out_path, study_info["month"])
         
-        file_name = "{}.pdf".format(study_info["title"])
+        file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"]))
 
         file_path = pathvalidate.sanitize_filepath(os.path.join(out_path, file_name))
         if os.path.exists(file_path):
             print("Already downloaded for following DOI : {} - {}".format(str(cur_downloading), doi))
+            insert_article_db(cursor, study_info, doi, file_path)
             cur_downloading = cur_downloading + 1
             continue
 
@@ -139,10 +148,19 @@ def main():
 
             write_file(respDownload, file_path)
 
-            remove_faild_doi(doi) 
+            remove_faild_doi(doi)
+            insert_article_db(cursor, study_info, doi, file_path)
 
             cur_downloading = cur_downloading + 1
             break
+    sqlite_conn.commit()
+
+def insert_article_db(db_cusour, study_info, doi, filepath):
+    try:
+       db_cusour.execute("INSERT INTO journals VALUES (?, ?, ?, ?, ?, ?)",
+                      (study_info["journal"], study_info["title"], study_info["year"], study_info["month"], filepath, doi))
+    except Exception as ex:
+        print(ex)
 
 def get_study_info(doi):
     global g_outputPath
@@ -196,12 +214,20 @@ def get_study_info(doi):
     return None
 
 def write_file(respDownload, file_path):
-    if g_overwrite:
-        os.remove(file_path)
+    try:
+        if g_overwrite:
+            os.remove(file_path)
 
-    f = open(file_path, "wb")
-    f.write(respDownload.content)
-    f.close()
+        f = open(file_path, "wb")
+        f.write(respDownload.content)
+        f.close()
+    except Exception as e:
+        newFileName = "{}/{}.pdf".format(g_writing_failed_path, time.time())
+        print("Failed to write file: {}\n saved this with name: {}".format(file_path, newFileName))
+        f = open(newFileName, "wb")
+        f.write(respDownload.content)
+        f.close()
+
     
 
 def retry_failed_to_download():
@@ -263,6 +289,9 @@ if len(g_empty_doi) > 0:
     empty_doi_list_file.write("\n".join(g_empty_doi))
     empty_doi_list_file.close()
 
+with open('index.json', 'w') as index_file:
+    index_file.write("\n".join(json.dumps(g_study_info_list, indent=4)))
+    index_file.close()
 # retry_failed_to_download()
 
 print("all done")

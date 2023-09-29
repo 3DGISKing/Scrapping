@@ -1,1 +1,9 @@
 sci-hub-doi-2022-02-12.txt
+doi-list.txt
+
+empty-doi-list.txt
+failed-doi-list.txt
+index.db
+.gitignore
+index.db-journal
+doi-list.txt

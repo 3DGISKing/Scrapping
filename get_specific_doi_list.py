@@ -4,13 +4,14 @@ import requests
 import json
 from scrapy.http import TextResponse
 
-search_doi = "10.1016/j.apor"
+search_doi = "10.1111/tgis."
 
 doi_list = []
 
 doi_list_file = open('sci-hub-doi-2022-02-12.txt', 'r')
 line = doi_list_file.readline()
 cnt = 1
+print("Start to read full doi list")
 while line:
     try:
         if search_doi in line:

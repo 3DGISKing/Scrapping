@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "journals",
+            "database": "${workspaceFolder:Scrapping}/index.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
