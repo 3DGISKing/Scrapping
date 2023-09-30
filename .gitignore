@@ -7,3 +7,4 @@ index.db
 .gitignore
 index.db-journal
 doi-list.txt
+writing_failed/*

@@ -59,6 +59,8 @@ def main():
             out_path = "{}/{}".format(out_path, study_info["month"])
         
         file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"]))
+        if(len(file_name) > 255):
+            file_name = file_name[0:254]
 
         file_path = pathvalidate.sanitize_filepath(os.path.join(out_path, file_name))
         if os.path.exists(file_path):
@@ -146,10 +148,10 @@ def main():
                 time.sleep(5)
                 continue
 
-            write_file(respDownload, file_path)
+            written_file_name = write_file(respDownload, file_path)
 
             remove_faild_doi(doi)
-            insert_article_db(cursor, study_info, doi, file_path)
+            insert_article_db(cursor, study_info, doi, written_file_name)
 
             cur_downloading = cur_downloading + 1
             break
@@ -186,7 +188,7 @@ def get_study_info(doi):
             elif "month =" in temp_str:
                 month = temp_str.split("month =")[-1].split("{")[-1].split("}")[0].strip()
             elif "title =" in temp_str:
-                title = temp_str.split("title =")[-1].split("{")[-1].split("}")[0].strip()
+                title = temp_str.split("title =")[-1].strip()
             elif "journal =" in temp_str:
                 journal = temp_str.split("journal =")[-1].split("{")[-1].split("}")[0].strip()
         
@@ -221,12 +223,14 @@ def write_file(respDownload, file_path):
         f = open(file_path, "wb")
         f.write(respDownload.content)
         f.close()
+        return file_path
     except Exception as e:
         newFileName = "{}/{}.pdf".format(g_writing_failed_path, time.time())
         print("Failed to write file: {}\n saved this with name: {}".format(file_path, newFileName))
         f = open(newFileName, "wb")
         f.write(respDownload.content)
         f.close()
+        return newFileName
 
     
 
