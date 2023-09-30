@@ -47,8 +47,14 @@ def main():
     cur_downloading = 0
 
     path = os.path.join(g_outputPath, "")
+    db_commit = 0
 
     for doi in doi_list:
+        db_data = get_article_from_db(cursor, doi)
+        if(len(db_data) > 0):
+            print("Already downloaded for following DOI : {} - {}".format(cur_downloading, doi))
+            cur_downloading = cur_downloading + 1
+            continue
         study_info = get_study_info(doi)
         if not study_info:
             print("failed to get study info for following DOI : {} - {}".format(str(cur_downloading), doi))
@@ -58,104 +64,107 @@ def main():
         if study_info["month"]:
             out_path = "{}/{}".format(out_path, study_info["month"])
         
-        file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"]))
+        file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"].strip("\{\}")))
         if(len(file_name) > 255):
-            file_name = file_name[0:254]
+            file_name = file_name[0:128]
 
         file_path = pathvalidate.sanitize_filepath(os.path.join(out_path, file_name))
         if os.path.exists(file_path):
             print("Already downloaded for following DOI : {} - {}".format(str(cur_downloading), doi))
             insert_article_db(cursor, study_info, doi, file_path)
             cur_downloading = cur_downloading + 1
-            continue
+        else:
+            url = sci_hub_url + doi
 
-        url = sci_hub_url + doi
+            # print("requesting {}".format(url))
 
-        # print("requesting {}".format(url))
-
-        resp = requests.get(url)
-        textResp = TextResponse(url=url,
-                                body=resp.text,
-                                encoding='utf-8')
-        
-        pdf_url = textResp.xpath(
-            '//div[@id="buttons"]/button').extract_first()
-        
-        if pdf_url == None:
-           print("failed to get pdf url for following DOI : {}".format(doi))
-           cur_downloading = cur_downloading + 1
-           continue 
-        
-        start_keyword = "location.href=\'//"
-        start = pdf_url.find(start_keyword)
-
-        if start == -1:
-            start_keyword = "location.href='/"
+            resp = requests.get(url)
+            textResp = TextResponse(url=url,
+                                    body=resp.text,
+                                    encoding='utf-8')
+            
+            pdf_url = textResp.xpath(
+                '//div[@id="buttons"]/button').extract_first()
+            
+            if pdf_url == None:
+                print("failed to get pdf url for following DOI : {}".format(doi))
+                cur_downloading = cur_downloading + 1
+                continue 
+            
+            start_keyword = "location.href=\'//"
             start = pdf_url.find(start_keyword)
 
-        if start == -1:
-            print("unrecognized pdf url: {}".format(pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
+            if start == -1:
+                start_keyword = "location.href='/"
+                start = pdf_url.find(start_keyword)
 
-        end = pdf_url.find('?download=true')
-
-        pdf_url = pdf_url[start + len(start_keyword):end]
-
-        # ex /tree/bb/56/bb5673427cd287fb70748d2ac813eeb2.pdf
-        if pdf_url.find("tree/") != -1:
-             pdf_url =  sci_hub_url + pdf_url
-        else: 
-            pdf_url =  "https://" + pdf_url
-        
-        if pdf_url.split("https://")[-1][:9] == "downloads":
-            pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
-        elif pdf_url.split("https://")[-1][:8] == "uptodate":
-            pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
-
-
-        print("downloading {} - {}".format(cur_downloading, len(doi_list)))
-
-        retry_count = 0
-        while retry_count < 5:
-            retry_count += 1
-            try:
-                respDownload = requests.get(pdf_url)
-            except Exception as e:   
-                # tuple
-                add_faild_doi(doi) 
-
-                print("downloading failed {} - {} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
-
-                time.sleep(5)
+            if start == -1:
+                print("unrecognized pdf url: {}".format(pdf_url))
+                cur_downloading = cur_downloading + 1
                 continue
 
-            print("size: {} url: {}".format(len(respDownload.content), pdf_url))
+            end = pdf_url.find('?download=true')
 
-            if len(respDownload.content) == 0:
-                add_faild_doi(doi) 
-                print("downloading failed {} - {} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-                time.sleep(5)
-                continue
-            elif len(respDownload.content) == 146:
-                g_empty_doi.append(doi) 
-                print("There is no file doi: {}".format(doi))
+            pdf_url = pdf_url[start + len(start_keyword):end]
+
+            # ex /tree/bb/56/bb5673427cd287fb70748d2ac813eeb2.pdf
+            if pdf_url.find("tree/") != -1:
+                pdf_url =  sci_hub_url + pdf_url
+            else: 
+                pdf_url =  "https://" + pdf_url
+            
+            if pdf_url.split("https://")[-1][:9] == "downloads":
+                pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
+            elif pdf_url.split("https://")[-1][:8] == "uptodate":
+                pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
+
+
+            print("downloading {} - {}".format(cur_downloading, len(doi_list)))
+
+            retry_count = 0
+            while retry_count < 5:
+                retry_count += 1
+                try:
+                    respDownload = requests.get(pdf_url)
+                except Exception as e:   
+                    # tuple
+                    add_faild_doi(doi) 
+
+                    print("downloading failed {} - {} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
+
+                    time.sleep(5)
+                    continue
+
+                print("size: {} url: {}".format(len(respDownload.content), pdf_url))
+
+                if len(respDownload.content) == 0:
+                    add_faild_doi(doi) 
+                    print("downloading failed {} - {} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
+                    time.sleep(5)
+                    continue
+                elif len(respDownload.content) == 146:
+                    g_empty_doi.append(doi) 
+                    print("There is no file doi: {}".format(doi))
+                    cur_downloading = cur_downloading + 1
+                    break
+                elif len(respDownload.content) < 1024:
+                    add_faild_doi(doi) 
+                    print("downloading failed {} - {} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
+                    time.sleep(5)
+                    continue
+
+                written_file_name = write_file(respDownload, file_path)
+
+                remove_faild_doi(doi)
+                insert_article_db(cursor, study_info, doi, written_file_name)
+
                 cur_downloading = cur_downloading + 1
                 break
-            elif len(respDownload.content) < 1024:
-                add_faild_doi(doi) 
-                print("downloading failed {} - {} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-                time.sleep(5)
-                continue
-
-            written_file_name = write_file(respDownload, file_path)
-
-            remove_faild_doi(doi)
-            insert_article_db(cursor, study_info, doi, written_file_name)
-
-            cur_downloading = cur_downloading + 1
-            break
-    sqlite_conn.commit()
+        db_commit = db_commit + 1
+        if(db_commit >= 10):
+            sqlite_conn.commit()
+            print("index db committed!")
+            db_commit = 0
 
 def insert_article_db(db_cusour, study_info, doi, filepath):
     try:
@@ -163,6 +172,15 @@ def insert_article_db(db_cusour, study_info, doi, filepath):
                       (study_info["journal"], study_info["title"], study_info["year"], study_info["month"], filepath, doi))
     except Exception as ex:
         print(ex)
+
+def get_article_from_db(db_cursor, doi):
+    try:
+        db_cursor.execute("SELECT * FROM journals WHERE doi=?", (doi,) )
+        rows = db_cursor.fetchall()
+        return rows
+    except Exception as ex:
+        print(ex)
+        return []
 
 def get_study_info(doi):
     global g_outputPath
