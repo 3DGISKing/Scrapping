@@ -1,171 +1,94 @@
+
+import argparse
+import json
 import os
-import re
+import time
 import requests
 from scrapy.http import TextResponse
+from pathlib import Path
 
-g_outputPath = "F:\\Sci-hub"
-g_downloadFailed = []
-g_overwrite = True
-
+g_overwrite = False
+g_doi_list_file_path = "";
+g_doi_list = []
+g_cur_downloading = 0;
+    
 def main():
-    global g_outputPath;
+    global g_doi_list_file_path, g_cur_downloading
 
-    doi_list_file = open('doi-list.txt', 'r')
-    lines = doi_list_file.readlines()
+    parser = argparse.ArgumentParser()
 
-    doi_list = []
- 
-    count = 0
-    # Strips the newline character
-    for line in lines:
-        doi_list.append(line.strip())
+    parser.add_argument("g_doi_list_file_path")
 
-    sci_hub_url = "https://sci-hub.ru/"
+    args = vars(parser.parse_args())
 
-    cur_downloading = 0;
+    g_doi_list_file_path = args["g_doi_list_file_path"]
 
-    for doi in doi_list:
-        url = sci_hub_url + doi
+    if not os.path.exists(g_doi_list_file_path):
+        print("doi list file: {} does not exist!".format(g_doi_list_file_path))
+        exit(0)
 
-        # print("requesting {}".format(url))
+    f = open(g_doi_list_file_path, 'r')
+    g_doi_list = json.load(f)
 
-        resp = requests.get(url)
-        textResp = TextResponse(url=url,
-                                body=resp.text,
-                                encoding='utf-8')
+    g_cur_downloading = 0;
+
+    for info in g_doi_list:
+        doi = info["doi"]
+        pdf_url = info["pdf_url"]
+        pdf_file_full_path = info["full_path"]
+
+        if os.path.exists(pdf_file_full_path):
+            if g_overwrite:
+                os.remove(pdf_file_full_path)
+            else:
+                print("{}/{} (doi:{}) already downloaded {} into {}".format(g_cur_downloading, len(g_doi_list), doi, pdf_url, pdf_file_full_path))
+                g_cur_downloading = g_cur_downloading + 1
+                continue
+
+        p = Path(pdf_file_full_path)
+        output_path = p.parent 
+
+        if not os.path.exists(output_path):
+            os.makedirs(output_path) 
+
+        print("{}/{} (doi:{}) downloading {} into {}".format(g_cur_downloading, len(g_doi_list), doi, pdf_url, pdf_file_full_path))
         
-        pdf_url = textResp.xpath(
-            '//div[@id="buttons"]/button').extract_first()
-        
-        if pdf_url == None:
-           print("failed to get pdf url for following DOI : {}".format(doi))
-           cur_downloading = cur_downloading + 1
-           continue 
-        
-        start_keyword = "location.href=\'//"
-        start = pdf_url.find(start_keyword)
+        success = download_file(pdf_url, pdf_file_full_path)
 
-        if start == -1:
-            start_keyword = "location.href='/"
-            start = pdf_url.find(start_keyword)
+        retry = 0;
 
-        if start == -1:
-            print("unrecognized pdf url: {}".format(pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
+        while success == False:
+            print("{}/{} retry({}) downloading {} into {}".format(g_cur_downloading, len(g_doi_list), retry, pdf_url, pdf_file_full_path))
+            time.sleep(1)
+            success = download_file(pdf_url, pdf_file_full_path)
+            retry += 1
 
-        end = pdf_url.find('?download=true')
+        g_cur_downloading = g_cur_downloading + 1
 
-        pdf_url = pdf_url[start + len(start_keyword):end]
+def download_file(url, local_filename):
+    global g_cur_downloading, g_doi_list
 
-        # ex /tree/bb/56/bb5673427cd287fb70748d2ac813eeb2.pdf
-        if pdf_url.find("tree/") != -1:
-             pdf_url =  sci_hub_url + pdf_url
-        else: 
-            pdf_url =  "https://" + pdf_url
+    try:
+        respDownload = requests.get(url)
 
-        print("downloading {}/{}".format(cur_downloading, len(doi_list)))
+    except Exception as e:   
+        print("{}/{} downloading failed. reason: {}".format(g_cur_downloading, len(g_doi_list), type(e)))
+        return False
 
-        try:
-            respDownload = requests.get(pdf_url)
+    if len(respDownload.content) == 0:
+        print("{}/{} downloading failed. reason: zero content".format(g_cur_downloading, len(g_doi_list)))
+        return False
 
-        except Exception as e:   
-            # tuple
-            g_downloadFailed.append((pdf_url)) 
-
-            print("downloading failed {}/{} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
-
-        print("size: {} url: {}".format(len(respDownload.content), pdf_url))
-
-        if len(respDownload.content) == 0:
-            g_downloadFailed.append((pdf_url)) 
-            print("downloading failed {}/{} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
-
-        if len(respDownload.content) < 1024:
-            g_downloadFailed.append((pdf_url)) 
-            print("downloading failed {}/{} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-            cur_downloading = cur_downloading + 1
-            continue
-
-
-
-        write_file(respDownload)
-
-        cur_downloading = cur_downloading + 1
-
-def write_file(respDownload):
-    global g_outputPath, g_overwrite
-
-    fileName = respDownload.url.split("?")[0].split("/")[-1]
-
-    path = os.path.join(g_outputPath, "");
-
-    fileName = os.path.join(path, fileName);
-
-    if os.path.exists(fileName):
-        if g_overwrite:
-            os.remove(fileName)
-        else:
-            return
-
-    f = open(fileName, "wb")
+    if len(respDownload.content) < 1024:
+        print("{}/{} downloading failed. reason: too small content".format(g_cur_downloading, len(g_doi_list)))
+        return False
+    
+    f = open(local_filename, "wb")
     f.write(respDownload.content)
     f.close()
-    
 
-def retry_failed_to_download():
-    global g_outputPath, g_downloadFailed
-
-    if len(g_downloadFailed) == 0:
-        return
-    
-    new_failed = []
-
-    retry_count = 0
-
-    for failed in g_downloadFailed:
-        downloadUrl = failed
-
-        print("{}/{} Retrying downloading {}".format(retry_count, len(g_downloadFailed), downloadUrl))
-
-        try:
-            respDownload = requests.get(downloadUrl)
-        except Exception as e:   
-            new_failed.append((downloadUrl)) 
-            print("downloading failed {}/{} reason: {} url: {}".format(retry_count, len(g_downloadFailed), type(e), downloadUrl))
-            retry_count += 1
-            continue
-
-        print("size: {} url: {}".format(len(respDownload.content), downloadUrl))
-
-        if len(respDownload.content) == 0:
-            print("downloading failed {}/{} reason: zero content url: {}".format(retry_count, len(g_downloadFailed), downloadUrl))
-            new_failed.append((downloadUrl)) 
-            retry_count += 1
-            continue
-
-        if len(respDownload.content) < 1024:
-            print("downloading failed {}/{} reason: too small content url: {}".format(retry_count, len(g_downloadFailed), downloadUrl))
-            new_failed.append((downloadUrl)) 
-            retry_count += 1
-            continue
-
-
-            
-        write_file(respDownload)
-
-        retry_count += 1
-
-    if len(new_failed) > 0:
-        g_downloadFailed = new_failed
-        retry_failed_to_download()
-
+    return True
+          
 main()
-
-retry_failed_to_download()
 
 print("all done")

@@ -21,12 +21,31 @@
             "justMyCode": true
         },
         {
-            "name": "SCI hub",
+            "name": "Get DOI",
+            "type": "python",
+            "request": "launch",
+            "program": "get_specific_doi_list.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args":["10.1016/j.envsoft", "F:/Sci-hub/Environmental Modelling & Software"]
+        },
+        {
+            "name": "SCI hub Scrapping",
             "type": "python",
             "request": "launch",
             "program": "sci-hub-scrapper.py",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "args":["doi-list1.json"]
+        },
+        {
+            "name": "Ex SCI hub Scrapping",
+            "type": "python",
+            "request": "launch",
+            "program": "sci-hub-scrapper_ex.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "args":["doi-list-test.json", "10"]
         }
     ]
 }
