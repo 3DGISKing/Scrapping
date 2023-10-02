@@ -134,6 +134,8 @@ def main():
                     print("downloading failed {} - {} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
 
                     time.sleep(g_retry_waiting)
+                    if retry_count >= 5:
+                        cur_downloading = cur_downloading + 1
                     continue
 
                 print("size: {} url: {}".format(len(respDownload.content), pdf_url))
@@ -200,6 +202,7 @@ def get_study_info(doi):
             response = requests.request("GET", url, headers=headers, data=payload)
         except ConnectionError as ex:
             time.sleep(1)
+            print("Connection error, retry!")
             repeat = True
 
     if response.status_code == 200:
