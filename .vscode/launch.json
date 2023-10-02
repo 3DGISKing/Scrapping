@@ -36,7 +36,7 @@
             "program": "sci-hub-scrapper.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["doi-list-advengsoft.json", "10"]
+            "args":["doi-list.json", "1"]
         }
     ]
 }

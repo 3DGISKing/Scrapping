@@ -133,11 +133,34 @@ class DownloadWorker(threading.Thread):
    
 
     def download_file(self, url, local_filename, doi):
-        subprocess.run(["wget", url, "-O", local_filename],
+        """
+        process = subprocess.run(["wget", url, "-O", local_filename],
                        stdout = subprocess.DEVNULL,
                        stderr = subprocess.DEVNULL) 
+        """
+
+        process = subprocess.run(["wget", url, "-O", local_filename])
+                                
+        return_code = process.returncode
+
+        if return_code != 0:
+            return False
+
+        if not os.path.exists(local_filename):
+            return False
         
-        # ?
+        file_size = os.path.getsize(local_filename)
+
+        if file_size == 0:
+            print("failed to download from {} into {}. reason zero byte".format(url, local_filename))
+            Path.unlink(local_filename)
+            return False
+    
+        if file_size < 1024 * 10:
+            print("failed to download from {} into {}. too small size".format(url, local_filename))
+            Path.unlink(local_filename)
+            return False
+        
         return True
 
 main()

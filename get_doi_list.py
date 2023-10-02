@@ -96,6 +96,9 @@ def get_pdf_url(doi):
     elif pdf_url.find("downloads/") != -1:
         # https://sci-hub.ru/downloads/2019-10-26/89/wang2019.pdf
         pdf_url = sci_hub_url + pdf_url
+    elif pdf_url.find("uptodate/") != -1:
+        # https://sci-hub.ru/uptodate/S1364815221001766.pdf
+        pdf_url = sci_hub_url + pdf_url
     else: 
         # https://dacemirror.sci-hub.ru/journal-article/9e324802ef65bfe6ace82a3b90b2045f/chappin2017.pdf
         pdf_url = "https://" + pdf_url
