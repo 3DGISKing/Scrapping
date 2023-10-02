@@ -14,7 +14,7 @@ g_downloadFailed = []
 g_empty_doi = []
 g_study_info_list = []
 g_overwrite = False
-g_retry_waiting = 0.1
+g_retry_waiting = 2
 g_writing_failed_path = "writing_failed"
 if not os.path.exists(g_writing_failed_path):
     os.mkdir(g_writing_failed_path)
@@ -138,7 +138,7 @@ def main():
                         cur_downloading = cur_downloading + 1
                     continue
 
-                print("size: {} url: {}".format(len(respDownload.content), pdf_url))
+                print("size: {}, content-type: {}, url: {}".format(len(respDownload.content), respDownload.headers['Content-Type'], pdf_url))
 
                 if len(respDownload.content) == 0:
                     add_faild_doi(doi) 
@@ -150,9 +150,14 @@ def main():
                     print("There is no file doi: {}".format(doi))
                     cur_downloading = cur_downloading + 1
                     break
-                elif len(respDownload.content) < 1024:
+                elif len(respDownload.content) < 2048:
                     add_faild_doi(doi) 
                     print("downloading failed {} - {} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
+                    time.sleep(g_retry_waiting)
+                    continue
+                elif respDownload.headers['Content-Type'] != 'application/pdf':
+                    add_faild_doi(doi) 
+                    print("downloading failed {} - {} reason: invalid content type - {}, url: {}, doi: {}".format(cur_downloading, len(doi_list), respDownload.headers.values['Content-Type'], pdf_url, doi))
                     time.sleep(g_retry_waiting)
                     continue
 
