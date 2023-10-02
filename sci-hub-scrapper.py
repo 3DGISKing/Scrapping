@@ -14,6 +14,7 @@ g_downloadFailed = []
 g_empty_doi = []
 g_study_info_list = []
 g_overwrite = False
+g_retry_waiting = 0.1
 g_writing_failed_path = "writing_failed"
 if not os.path.exists(g_writing_failed_path):
     os.mkdir(g_writing_failed_path)
@@ -132,7 +133,7 @@ def main():
 
                     print("downloading failed {} - {} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
 
-                    time.sleep(5)
+                    time.sleep(g_retry_waiting)
                     continue
 
                 print("size: {} url: {}".format(len(respDownload.content), pdf_url))
@@ -140,7 +141,7 @@ def main():
                 if len(respDownload.content) == 0:
                     add_faild_doi(doi) 
                     print("downloading failed {} - {} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-                    time.sleep(5)
+                    time.sleep(g_retry_waiting)
                     continue
                 elif len(respDownload.content) == 146:
                     g_empty_doi.append(doi) 
@@ -150,7 +151,7 @@ def main():
                 elif len(respDownload.content) < 1024:
                     add_faild_doi(doi) 
                     print("downloading failed {} - {} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-                    time.sleep(5)
+                    time.sleep(g_retry_waiting)
                     continue
 
                 written_file_name = write_file(respDownload, file_path)
@@ -192,7 +193,15 @@ def get_study_info(doi):
         'Accept': 'application/x-bibtex; charset=utf-8'
     }
 
-    response = requests.request("GET", url, headers=headers, data=payload)
+    repeat = True
+    while repeat:
+        try:
+            repeat = False
+            response = requests.request("GET", url, headers=headers, data=payload)
+        except ConnectionError as ex:
+            time.sleep(1)
+            repeat = True
+
     if response.status_code == 200:
         temp_str_list = response.text.split("\n")
         year = ""
