@@ -139,11 +139,14 @@ def main():
 
     parser.add_argument("g_doi_pattern")
     parser.add_argument("g_outputPath")
+    parser.add_argument("g_new_doi_list_file_path")
+    
 
     args = vars(parser.parse_args())
 
     g_doi_pattern = args["g_doi_pattern"]
     g_output_path = args["g_outputPath"]
+    g_new_doi_list_file_path = args["g_new_doi_list_file_path"]
 
     if not os.path.exists(g_output_path):
         print("{} does not exists".format(g_output_path))
