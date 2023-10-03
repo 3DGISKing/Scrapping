@@ -1,7 +1,9 @@
 import json
 import os
+from pathlib import Path
 import re
 import sqlite3
+import subprocess
 import requests
 import pathvalidate
 import time
@@ -65,7 +67,7 @@ def main():
         if study_info["month"]:
             out_path = "{}/{}".format(out_path, study_info["month"])
         
-        file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"].strip("\{\}")))
+        file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"].strip("\{\},.|\\?/;:'\"")))
         if(len(file_name) > 255):
             file_name = file_name[0:128]
 
@@ -126,45 +128,26 @@ def main():
             while retry_count < 5:
                 retry_count += 1
                 try:
-                    respDownload = requests.get(pdf_url)
+                    result = download_file(pdf_url, file_path, doi)
                 except Exception as e:   
                     # tuple
                     add_faild_doi(doi) 
 
                     print("downloading failed {} - {} reason: {} url: {}".format(cur_downloading, len(doi_list), type(e), pdf_url))
+                    print(e)
 
                     time.sleep(g_retry_waiting)
                     if retry_count >= 5:
                         cur_downloading = cur_downloading + 1
                     continue
 
-                print("size: {}, content-type: {}, url: {}".format(len(respDownload.content), respDownload.headers['Content-Type'], pdf_url))
-
-                if len(respDownload.content) == 0:
+                if result == False:
                     add_faild_doi(doi) 
-                    print("downloading failed {} - {} reason: zero content url: {}".format(cur_downloading, len(doi_list), pdf_url))
                     time.sleep(g_retry_waiting)
                     continue
-                elif len(respDownload.content) == 146:
-                    g_empty_doi.append(doi) 
-                    print("There is no file doi: {}".format(doi))
-                    cur_downloading = cur_downloading + 1
-                    break
-                elif len(respDownload.content) < 2048:
-                    add_faild_doi(doi) 
-                    print("downloading failed {} - {} reason: too small content url: {}".format(cur_downloading, len(doi_list), pdf_url))
-                    time.sleep(g_retry_waiting)
-                    continue
-                elif respDownload.headers['Content-Type'] != 'application/pdf':
-                    add_faild_doi(doi) 
-                    print("downloading failed {} - {} reason: invalid content type - {}, url: {}, doi: {}".format(cur_downloading, len(doi_list), respDownload.headers.values['Content-Type'], pdf_url, doi))
-                    time.sleep(g_retry_waiting)
-                    continue
-
-                written_file_name = write_file(respDownload, file_path)
 
                 remove_faild_doi(doi)
-                insert_article_db(cursor, study_info, doi, written_file_name)
+                insert_article_db(cursor, study_info, doi, file_path)
 
                 cur_downloading = cur_downloading + 1
                 break
@@ -189,6 +172,36 @@ def get_article_from_db(db_cursor, doi):
     except Exception as ex:
         print(ex)
         return []
+    
+def download_file(url, local_filename, doi):
+    """
+    process = subprocess.run(["wget", url, "-O", local_filename],
+                    stdout = subprocess.DEVNULL,
+                    stderr = subprocess.DEVNULL) 
+    """
+    process = subprocess.run(["wget", url, "-O", local_filename, "-nv"], shell=True)
+                            
+    return_code = process.returncode
+
+    if return_code != 0:
+        return False
+
+    if not os.path.exists(local_filename):
+        return False
+    
+    file_size = os.path.getsize(local_filename)
+
+    if file_size == 0:
+        print("failed to download from {} into {}. reason zero byte".format(url, local_filename))
+        Path.unlink(local_filename)
+        return False
+
+    if file_size < 1024 * 10:
+        print("failed to download from {} into {}. too small size".format(url, local_filename))
+        Path.unlink(local_filename)
+        return False
+    
+    return True
 
 def get_study_info(doi):
     global g_outputPath
