@@ -68,8 +68,9 @@ def main():
             out_path = "{}/{}".format(out_path, study_info["month"])
         
         file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"].strip("\{\},.$|\\?/;:'\"")))
-        if(len(file_name) > 128):
-            file_name = file_name[0:128] + '.pdf'
+        if(len(file_name) + len(out_path) > 250):
+            trim_len = 250 - len(out_path)
+            file_name = file_name[0:trim_len] + '.pdf'
 
         file_path = pathvalidate.sanitize_filepath(os.path.join(out_path, file_name))
         if os.path.exists(file_path):
