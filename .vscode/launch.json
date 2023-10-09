@@ -24,10 +24,10 @@
             "name": "Get DOI",
             "type": "python",
             "request": "launch",
-            "program": "get_specific_doi_list.py",
+            "program": "get_doi_list.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["10.1016/j.advengsoft", "F:/Sci-hub/Advances in Engineering Software", "doi-list-advengsoft.json"]
+            "args":["10.1007/s12665-", "F:/Sci-hub/Environmental Earth Sciences", "doi-list-env_earth-sci.json", "16"]
         },
         {
             "name": "SCI hub Scrapping",
@@ -36,7 +36,7 @@
             "program": "sci-hub-scrapper.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["doi-list.json", "1"]
+            "args":["doi-list-combustscitech.json", "1"]
         }
     ]
 }

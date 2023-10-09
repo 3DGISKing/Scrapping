@@ -3,7 +3,6 @@ import argparse
 import json
 import os
 import time
-import requests
 from scrapy.http import TextResponse
 from pathlib import Path
 import threading
@@ -57,6 +56,7 @@ def main():
     print("all done")
 
     return True
+
           
 class DownloadWorker(threading.Thread):
     def __init__(self, _id):
@@ -70,7 +70,7 @@ class DownloadWorker(threading.Thread):
         self.download_journals()
 
     def download_journals(self):
-        global g_download_started_dois, g_count_of_started, g_doi_list
+        global g_download_started_dois, g_doi_list
 
         for info in g_doi_list:
             doi = info["doi"]
@@ -85,10 +85,10 @@ class DownloadWorker(threading.Thread):
 
             g_thread_lock.release()
 
-            self.download_jounal(info)
+            self.download_journal(info)
 
-    def download_jounal(self, info):
-        global g_download_started_dois, g_overwrite, g_count_of_started, g_doi_list
+    def download_journal(self, info):
+        global g_overwrite, g_count_of_started, g_doi_list
 
         doi = info["doi"]
         pdf_url = info["pdf_url"]
@@ -99,7 +99,7 @@ class DownloadWorker(threading.Thread):
                 os.remove(pdf_file_full_path)
             else:
                 g_thread_lock.acquire()
-                print("{}/{} doi:{} already downloaded. thread{}".format(g_count_of_started, len(g_doi_list), doi, self.id))
+                print("{}/{} doi:{} already downloaded. thread{} {} {}".format(g_count_of_started, len(g_doi_list), doi, self.id, pdf_url, pdf_file_full_path))
                 self.current_downloading = g_count_of_started
 
                 g_count_of_started = g_count_of_started + 1
@@ -113,7 +113,7 @@ class DownloadWorker(threading.Thread):
             os.makedirs(output_path) 
 
         g_thread_lock.acquire()
-        print("{}/{} doi:{} thread{}".format(g_count_of_started, len(g_doi_list), doi, self.id))
+        print("{}/{} doi:{} thread{} {} {}".format(g_count_of_started, len(g_doi_list), doi, self.id, pdf_url, pdf_file_full_path))
         self.current_downloading = g_count_of_started
         g_count_of_started = g_count_of_started + 1
         g_thread_lock.release()
@@ -122,7 +122,12 @@ class DownloadWorker(threading.Thread):
 
         retry = 0;
 
+        max_retry = 10
+
         while success == False:
+            if retry > max_retry:
+                break
+
             g_thread_lock.acquire()
             print("{}/{} retry({}) doi:{} thread{}".format(self.current_downloading, len(g_doi_list), retry, doi, self.id))
             g_thread_lock.release()
@@ -130,24 +135,26 @@ class DownloadWorker(threading.Thread):
             time.sleep(1)
             success = self.download_file(pdf_url, pdf_file_full_path, doi)
             retry += 1
-   
+        
 
     def download_file(self, url, local_filename, doi):
-        """
         process = subprocess.run(["wget", url, "-O", local_filename],
                        stdout = subprocess.DEVNULL,
                        stderr = subprocess.DEVNULL) 
-        """
+        
 
-        process = subprocess.run(["wget", url, "-O", local_filename])
+        # process = subprocess.run(["wget", url, "-O", local_filename])
                                 
         return_code = process.returncode
 
         if return_code != 0:
-            return False
-
+           if os.path.exists(local_filename):
+              Path.unlink(local_filename)
+           
+           return False
+        
         if not os.path.exists(local_filename):
-            return False
+           return False
         
         file_size = os.path.getsize(local_filename)
 
