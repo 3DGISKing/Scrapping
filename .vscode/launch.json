@@ -1,32 +1,43 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "MDPI Scrapper V5-V12",
-            "type": "python",
-            "request": "launch",
-            "program": "scraper-mdpi-ijgi-v5-v12.py",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
-            "name": "MDPI Scrapper V1-V4",
-            "type": "python",
-            "request": "launch",
-            "program": "scraper-mdpi-ijgi-v1-v4.py",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
-            "name": "SCI hub",
-            "type": "python",
-            "request": "launch",
-            "program": "sci-hub-scrapper.py",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "resume-download",
+      "type": "python",
+      "request": "launch",
+      "program": "resume-download.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": ["download"]
+    },
+
+    {
+      "name": "MDPI Scrapper V5-V12",
+      "type": "python",
+      "request": "launch",
+      "program": "scraper-mdpi-ijgi-v5-v12.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "MDPI Scrapper V1-V4",
+      "type": "python",
+      "request": "launch",
+      "program": "scraper-mdpi-ijgi-v1-v4.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "SCI hub",
+      "type": "python",
+      "request": "launch",
+      "program": "sci-hub-scrapper.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
 }

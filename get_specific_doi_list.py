@@ -4,7 +4,7 @@ import requests
 import json
 from scrapy.http import TextResponse
 
-search_doi = "10.1111/tgis."
+search_doi = "10.1080/13658816"
 
 doi_list = []
 

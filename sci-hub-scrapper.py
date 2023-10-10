@@ -81,46 +81,47 @@ def main():
             url = sci_hub_url + doi
 
             # print("requesting {}".format(url))
+            pdf_url = get_pdf_url(url)
 
-            resp = requests.get(url)
-            textResp = TextResponse(url=url,
-                                    body=resp.text,
-                                    encoding='utf-8')
+            # resp = requests.get(url)
+            # textResp = TextResponse(url=url,
+            #                         body=resp.text,
+            #                         encoding='utf-8')
             
-            pdf_url = textResp.xpath(
-                '//div[@id="buttons"]/button').extract_first()
+            # pdf_url = textResp.xpath(
+            #     '//div[@id="buttons"]/button').extract_first()
             
             if pdf_url == None:
                 print("failed to get pdf url for following DOI : {}".format(doi))
                 cur_downloading = cur_downloading + 1
                 continue 
             
-            start_keyword = "location.href=\'//"
-            start = pdf_url.find(start_keyword)
+            # start_keyword = "location.href=\'//"
+            # start = pdf_url.find(start_keyword)
 
-            if start == -1:
-                start_keyword = "location.href='/"
-                start = pdf_url.find(start_keyword)
+            # if start == -1:
+            #     start_keyword = "location.href='/"
+            #     start = pdf_url.find(start_keyword)
 
-            if start == -1:
-                print("unrecognized pdf url: {}".format(pdf_url))
-                cur_downloading = cur_downloading + 1
-                continue
+            # if start == -1:
+            #     print("unrecognized pdf url: {}".format(pdf_url))
+            #     cur_downloading = cur_downloading + 1
+            #     continue
 
-            end = pdf_url.find('?download=true')
+            # end = pdf_url.find('?download=true')
 
-            pdf_url = pdf_url[start + len(start_keyword):end]
+            # pdf_url = pdf_url[start + len(start_keyword):end]
 
-            # ex /tree/bb/56/bb5673427cd287fb70748d2ac813eeb2.pdf
-            if pdf_url.find("tree/") != -1:
-                pdf_url =  sci_hub_url + pdf_url
-            else: 
-                pdf_url =  "https://" + pdf_url
+            # # ex /tree/bb/56/bb5673427cd287fb70748d2ac813eeb2.pdf
+            # if pdf_url.find("tree/") != -1:
+            #     pdf_url =  sci_hub_url + pdf_url
+            # else: 
+            #     pdf_url =  "https://" + pdf_url
             
-            if pdf_url.split("https://")[-1][:9] == "downloads":
-                pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
-            elif pdf_url.split("https://")[-1][:8] == "uptodate":
-                pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
+            # if pdf_url.split("https://")[-1][:9] == "downloads":
+            #     pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
+            # elif pdf_url.split("https://")[-1][:8] == "uptodate":
+            #     pdf_url =  "https://sci-hub.ru/" + pdf_url.split("https://")[-1]
 
 
             print("downloading {} - {}".format(cur_downloading, len(doi_list)))
@@ -174,6 +175,22 @@ def get_article_from_db(db_cursor, doi):
         print(ex)
         return []
     
+def get_pdf_url(doi_url):
+    try:
+        process = subprocess.run(["wget", doi_url, "-qO", "-"], capture_output=True)
+        stdout_as_str = process.stdout.decode("utf-8")
+        m = re.search(r'\/\/[^ ]+\.pdf', stdout_as_str)
+        if m == None:
+            mm = re.search(r'\/[^ ]+\.pdf', stdout_as_str)
+            pdf_url = '//sci-hub.ru' + mm.group(0)
+        else:
+            pdf_url = m.group(0)
+        print(pdf_url)
+        return 'https:' + pdf_url
+    except Exception as ex:
+        print("{}".format(doi_url, type(ex)))
+        return
+
 def download_file(url, local_filename, doi):
     """
     process = subprocess.run(["wget", url, "-O", local_filename],
@@ -209,23 +226,19 @@ def get_study_info(doi):
 
     url = "https://www.doi.org/{}".format(doi)
 
-    payload = {}
-    headers = {
-        'Accept': 'application/x-bibtex; charset=utf-8'
-    }
-
     repeat = True
     while repeat:
         try:
             repeat = False
-            response = requests.request("GET", url, headers=headers, data=payload)
-        except ConnectionError as ex:
+            process = subprocess.run("wget --header=\"Accept: application/x-bibtex; charset=utf-8\" {} -qO -".format(url), capture_output=True, shell=True)
+            stdout_as_str = process.stdout.decode("utf-8")
+        except Exception as ex:
             time.sleep(1)
             print("Connection error, retry!")
             repeat = True
 
-    if response.status_code == 200:
-        temp_str_list = response.text.split("\n")
+    if stdout_as_str:
+        temp_str_list = stdout_as_str.split("\n")
         year = ""
         month = ""
         title = ""
