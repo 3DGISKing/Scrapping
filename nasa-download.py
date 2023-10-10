@@ -130,12 +130,12 @@ def download_file(url: string) -> None:
         click.echo(f'Start downloading file {file}.')
         file_size_offline = 0
 
-    while file_size_online != file_size_offline:
+    while file_size_online > file_size_offline:
         try:
             if file.exists(): 
-                click.echo(f'File {file} is incomplete. Resume download.')
-                file_size_offline = file.stat().st_size
+                click.echo(f'File {file} is incomplete. Resume download.')                
             downloader(url, file_size_offline)
+            file_size_offline = file.stat().st_size
         except Exception as ex:
             click.echo(f'Error in downloading {url}.')
             click.echo(ex)
@@ -250,4 +250,4 @@ def validate_file(position: int) -> None:
 
 
 if __name__ == '__main__':
-    cli()
+    download()
