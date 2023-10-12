@@ -16,7 +16,7 @@ g_downloadFailed = []
 g_empty_doi = []
 g_study_info_list = []
 g_overwrite = False
-g_retry_waiting = 2
+g_retry_waiting = 5
 g_writing_failed_path = "writing_failed"
 if not os.path.exists(g_writing_failed_path):
     os.mkdir(g_writing_failed_path)
@@ -67,7 +67,7 @@ def main():
         if study_info["month"]:
             out_path = "{}/{}".format(out_path, study_info["month"])
         
-        file_name = pathvalidate.sanitize_filename("{}.pdf".format(study_info["title"].strip("\{\},.$|\\?/;:'\"")))
+        file_name = pathvalidate.sanitize_filename("{}.pdf".format(re.sub('[^A-Za-z0-9 ]+', '', study_info['title'])))
         if(len(file_name) + len(out_path) > 250):
             trim_len = 250 - len(out_path)
             file_name = file_name[0:trim_len] + '.pdf'
@@ -81,21 +81,21 @@ def main():
             url = sci_hub_url + doi
 
             # print("requesting {}".format(url))
-            pdf_url = get_pdf_url(url)
-
-            # resp = requests.get(url)
-            # textResp = TextResponse(url=url,
-            #                         body=resp.text,
-            #                         encoding='utf-8')
+            retry_count = 0
+            while retry_count < 5:
+                pdf_url = get_pdf_url(url)
+                if pdf_url == None:
+                    retry_count += 1
+                    print("retry to get pdf url for following DOI : {}".format(doi))
+                    time.sleep(g_retry_waiting)
+                    continue 
+                break
             
-            # pdf_url = textResp.xpath(
-            #     '//div[@id="buttons"]/button').extract_first()
-            
-            if pdf_url == None:
-                print("failed to get pdf url for following DOI : {}".format(doi))
+            if retry_count >= 5 and pdf_url == None:
                 cur_downloading = cur_downloading + 1
-                continue 
-            
+                print("failed to get pdf url for DOI: {}".format(doi))
+                continue
+
             # start_keyword = "location.href=\'//"
             # start = pdf_url.find(start_keyword)
 
@@ -144,7 +144,8 @@ def main():
                     continue
 
                 if result == False:
-                    add_faild_doi(doi) 
+                    add_faild_doi(doi)
+                    print("download failed with result: {}, pdf url: {}".format(result, pdf_url)) 
                     time.sleep(g_retry_waiting)
                     continue
 
@@ -179,16 +180,17 @@ def get_pdf_url(doi_url):
     try:
         process = subprocess.run(["wget", doi_url, "-qO", "-"], capture_output=True)
         stdout_as_str = process.stdout.decode("utf-8")
-        m = re.search(r'\/\/[^ ]+\.pdf', stdout_as_str)
+        m = re.search(r'\'\/[^ ]+\.pdf', stdout_as_str)
         if m == None:
-            mm = re.search(r'\/[^ ]+\.pdf', stdout_as_str)
-            pdf_url = '//sci-hub.ru' + mm.group(0)
+            print(stdout_as_str)
+            return
         else:
-            pdf_url = m.group(0)
-        print(pdf_url)
-        return 'https:' + pdf_url
+            pdf_url = m.group(0).strip("\'")
+        # print(pdf_url)
+        return ('https:' if pdf_url.startswith("\/\/") else 'https://sci-hub.ru') + pdf_url 
     except Exception as ex:
-        print("{}".format(doi_url, type(ex)))
+        print("error in getting pdf url: {}".format(doi_url))
+        print(ex)
         return
 
 def download_file(url, local_filename, doi):
@@ -226,19 +228,23 @@ def get_study_info(doi):
 
     url = "https://www.doi.org/{}".format(doi)
 
+    payload = {}
+    headers = {
+        'Accept': 'application/x-bibtex; charset=utf-8'
+    }
+
     repeat = True
     while repeat:
         try:
             repeat = False
-            process = subprocess.run("wget --header=\"Accept: application/x-bibtex; charset=utf-8\" {} -qO -".format(url), capture_output=True, shell=True)
-            stdout_as_str = process.stdout.decode("utf-8")
+            response = requests.request("GET", url, headers=headers, data=payload)
         except Exception as ex:
             time.sleep(1)
             print("Connection error, retry!")
             repeat = True
 
-    if stdout_as_str:
-        temp_str_list = stdout_as_str.split("\n")
+    if response.status_code == 200:
+        temp_str_list = response.text.split("\n")
         year = ""
         month = ""
         title = ""
