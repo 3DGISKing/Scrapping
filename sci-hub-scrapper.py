@@ -68,8 +68,8 @@ def main():
             out_path = "{}/{}".format(out_path, study_info["month"])
         
         file_name = pathvalidate.sanitize_filename("{}.pdf".format(re.sub('[^A-Za-z0-9 ]+', '', study_info['title'])))
-        if(len(file_name) + len(out_path) > 250):
-            trim_len = 250 - len(out_path)
+        if(len(file_name) + len(out_path) > 200):
+            trim_len = 200 - len(out_path)
             file_name = file_name[0:trim_len] + '.pdf'
 
         file_path = pathvalidate.sanitize_filepath(os.path.join(out_path, file_name))

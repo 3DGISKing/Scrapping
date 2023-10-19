@@ -12,14 +12,17 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 data_path = {
-    'MYD17A2': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MYD17A2': ['h27v04', 'h27v05', 'h28v05'],
     'MCD12Q1': ['h27v04', 'h27v05', 'h28v05'],
-    'MOD17A3': ['h27v04', 'h27v05', 'h28v05'],
-    'MCD15A2': ['h27v04', 'h27v05', 'h28v05'],
-    'MOD44B': ['h27v04', 'h27v05', 'h28v05'],
-    'MOD13Q1': ['h27v04', 'h27v05', 'h28v05'],
-    'MOD17A2': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MCD12Q2': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MOD17A3': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MCD15A2': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MOD44B': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MOD13Q1': ['h27v04', 'h27v05', 'h28v05'],
+    # 'MOD17A2HGF': ['h27v04', 'h27v05', 'h28v05'],
 }
+
+year_limit = 2010
 
 root_by_types = {
     'MOD':	'https://e4ftl01.cr.usgs.gov/MOLT/',
@@ -164,7 +167,7 @@ def download_dataset(dataset_name: string, root_url: string, path):
             pattern2 = re.compile('<a +href=[\\"\']+(.+)[\\"\']+>(20\\d+)\\.\\d+.\\d+/?</a>')
             response.close()
             for (url_part, year) in re.findall(pattern2, response.content.decode()):
-                if int(year) < 2010:
+                if int(year) < year_limit:
                     continue
                 third_url = second_url + url_part
                 response = session.get(third_url)
