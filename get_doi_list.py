@@ -227,6 +227,7 @@ class Worker(threading.Thread):
 
         journal_info = get_journal_info(doi)
 
+        max_retry = 3
         retry = 0
 
         while not journal_info:
@@ -234,6 +235,9 @@ class Worker(threading.Thread):
             time.sleep(1)
             journal_info = get_journal_info(doi)
             retry += 1
+
+            if retry > max_retry:
+                return
 
         retry = 0
 
@@ -244,6 +248,9 @@ class Worker(threading.Thread):
             time.sleep(1)
             pdf_url = get_pdf_url(doi)
             retry += 1
+
+            if retry > max_retry:
+                return
 
         # if title is empty
         if journal_info["title"] == "":
@@ -275,7 +282,7 @@ class Worker(threading.Thread):
     
 
 def main():
-    global g_output_path, g_full_doi_list_file_path, g_doi_pattern
+    global g_output_path, g_full_doi_list_file_path, g_doi_pattern, g_data
 
     parser = argparse.ArgumentParser()
 
@@ -297,10 +304,21 @@ def main():
 
     if not os.path.exists(g_full_doi_list_file_path):
         print("{} does not exists".format(g_full_doi_list_file_path))
-        exit(0)    
+        exit(0)
+
+    doi_pattern_list_exist = []
+
+    if os.path.exists(g_new_doi_list_file_path):
+        f = open(g_new_doi_list_file_path, 'r')
+        g_data = json.load(f)
+
+        for info in g_data:
+            doi = info["doi"]
+            doi_pattern_list_exist.append(doi)
 
     print("doi pattern: {}".format(g_doi_pattern))
     print("output path: {}".format(g_output_path))
+    print("already found: {}".format(len(doi_pattern_list_exist)))
 
     print("preparing doi pattern list...")
 
@@ -323,7 +341,8 @@ def main():
         found += 1
         doi = line.strip()
 
-        g_doi_pattern_list.append(doi)
+        if not doi in doi_pattern_list_exist:
+            g_doi_pattern_list.append(doi)
 
         try: 
             line = doi_list_file.readline()

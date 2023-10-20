@@ -122,7 +122,7 @@ class DownloadWorker(threading.Thread):
 
         retry = 0;
 
-        max_retry = 10
+        max_retry = 3
 
         while success == False:
             if retry > max_retry:
