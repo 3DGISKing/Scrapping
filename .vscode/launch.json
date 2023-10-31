@@ -27,7 +27,7 @@
             "program": "get_doi_list.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["10.1007/s12665-", "F:/Sci-hub/Environmental Earth Sciences", "doi-list-env_earth-sci.json", "16"]
+            "args":["10.3846/20296991.", "F:/Sci-hub/Geodesy and Cartography", "doi-list-geodesy.json", "16"]
         },
         {
             "name": "SCI hub Scrapping",
@@ -36,7 +36,15 @@
             "program": "sci-hub-scrapper.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args":["doi-list-combustscitech.json", "1"]
+            "args":["doi-list-geodesy.json", "1"]
+        },
+        {
+            "name": "QGIS Plugins",
+            "type": "python",
+            "request": "launch",
+            "program": "qgis_downloader.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }
