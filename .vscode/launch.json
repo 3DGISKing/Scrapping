@@ -45,6 +45,14 @@
             "program": "qgis_downloader.py",
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Collect Emails",
+            "type": "python",
+            "request": "launch",
+            "program": "collect_emails.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
         }
     ]
 }

@@ -1,3 +1,9 @@
+### 1.0.5 - 2024-05-08
+
+#### Added
+
+- collect email from ISPR Geo-Information.
+
 ### 1.0.4 - 2023-10-31
 
 #### Added
